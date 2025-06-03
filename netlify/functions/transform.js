@@ -1,4 +1,4 @@
-const Replicate = require('replicate');
+const fetch = require('node-fetch');
 
 // Style prompt mapping
 const stylePrompts = {
@@ -41,35 +41,24 @@ exports.handler = async function(event, context) {
       };
     }
     
-    // Initialize Replicate client
-    const replicate = new Replicate({
-      auth: REPLICATE_API_TOKEN,
-    });
-    
-    // Create prediction with Replicate API
     console.log('Creating prediction with Replicate API...');
     
-    // Use Replicate client to run the model
-    const output = await replicate.run(
-      "black-forest-labs/flux-kontext-pro",
-      {
-        input: {
-          prompt: stylePrompt,
-          input_image: imageData,
-          output_format: "jpg",
-          safety_tolerance: 2
-        }
-      }
-    );
+    // Ensure imageData is in the right format (data:image/jpeg;base64,...)
+    const imageUrl = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
     
-    console.log('Prediction succeeded!');
+    // First, create a prediction
+    const prediction = await createPrediction(REPLICATE_API_TOKEN, imageUrl, stylePrompt);
+    
+    // Then poll for the result
+    console.log('Polling for results...');
+    const result = await waitForResult(REPLICATE_API_TOKEN, prediction.id);
     
     // Return the result
     return {
       statusCode: 200,
       body: JSON.stringify({ 
         success: true, 
-        outputImageUrl: output 
+        outputImageUrl: result 
       })
     };
   } catch (error) {
@@ -82,4 +71,69 @@ exports.handler = async function(event, context) {
       })
     };
   }
-}; 
+};
+
+// Function to create a prediction with Replicate API
+async function createPrediction(apiToken, imageData, prompt) {
+  const response = await fetch('https://api.replicate.com/v1/predictions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Token ${apiToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      // Use the black-forest-labs/flux-kontext-pro model
+      version: "5e5296dd0ff98f79ce32188f01308af6e1e0157cac6cf306852b7b1b9ad0e23a",
+      input: {
+        prompt: prompt,
+        input_image: imageData,
+        output_format: "jpg",
+        safety_tolerance: 2
+      }
+    })
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`API error: ${error.detail || response.statusText}`);
+  }
+  
+  return await response.json();
+}
+
+// Function to poll for results
+async function waitForResult(apiToken, id) {
+  const maxAttempts = 60;  // Maximum polling attempts
+  const interval = 1000;   // Polling interval in ms
+  
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    console.log(`Checking prediction status (attempt ${attempt + 1}/${maxAttempts})...`);
+    
+    const response = await fetch(`https://api.replicate.com/v1/predictions/${id}`, {
+      headers: {
+        'Authorization': `Token ${apiToken}`
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`API error: ${error.detail || response.statusText}`);
+    }
+    
+    const prediction = await response.json();
+    
+    if (prediction.status === "succeeded") {
+      console.log('Prediction succeeded!');
+      return prediction.output;
+    }
+    
+    if (prediction.status === "failed") {
+      throw new Error(prediction.error || "Prediction failed");
+    }
+    
+    // Wait before polling again
+    await new Promise(resolve => setTimeout(resolve, interval));
+  }
+  
+  throw new Error("Prediction timed out");
+} 

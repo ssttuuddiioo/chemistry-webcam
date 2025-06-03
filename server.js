@@ -78,6 +78,9 @@ app.get('/api/health', (req, res) => {
 
 // Function to create a prediction with Replicate API
 async function createPrediction(imageData, prompt) {
+  // Ensure imageData is in the right format (data:image/jpeg;base64,...)
+  const imageUrl = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
+  
   const response = await fetch('https://api.replicate.com/v1/predictions', {
     method: 'POST',
     headers: {
@@ -89,7 +92,7 @@ async function createPrediction(imageData, prompt) {
       version: "5e5296dd0ff98f79ce32188f01308af6e1e0157cac6cf306852b7b1b9ad0e23a",
       input: {
         prompt: prompt,
-        input_image: imageData,
+        input_image: imageUrl,
         output_format: "jpg",
         safety_tolerance: 2
       }

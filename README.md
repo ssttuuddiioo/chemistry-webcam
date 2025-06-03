@@ -22,7 +22,7 @@ A modern web application for capturing photos and transforming them with AI usin
 
 ### Prerequisites
 
-- Node.js (version 12 or higher)
+- Node.js (version 16 or higher)
 - npm or yarn
 - Replicate API token
 
@@ -42,7 +42,6 @@ A modern web application for capturing photos and transforming them with AI usin
 3. Create a `.env` file in the root directory with your Replicate API token:
    ```
    REPLICATE_API_TOKEN=your_replicate_api_token_here
-   PORT=3000
    ```
 
 ### Running the Application
@@ -60,7 +59,7 @@ npm start
 ```
 
 Then open your browser and navigate to:
-- http://localhost:3000
+- http://localhost:8002
 
 ## 📦 Deployment
 
@@ -76,13 +75,17 @@ Then open your browser and navigate to:
    - Environment variables: Add your `REPLICATE_API_TOKEN`
 6. Click "Deploy site"
 
-### Deploy to Heroku
+The project includes a `netlify.toml` file that configures:
+- Node.js version (v18)
+- Redirects for API endpoints
+- Function directory location
 
-1. Create a new app on [Heroku](https://www.heroku.com/)
-2. Connect to your GitHub repository
-3. Set up automatic deploys from the main branch
-4. Add your `REPLICATE_API_TOKEN` in the Config Vars section of the Settings page
-5. Deploy the application
+### Troubleshooting Deployment
+
+If you encounter issues with the Replicate API:
+1. Make sure your API token is correctly set in Netlify environment variables
+2. Check that your Netlify functions have the necessary permissions
+3. Verify that your account has access to the Replicate models being used
 
 ## 🔒 Security Notes
 
