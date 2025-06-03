@@ -56,8 +56,14 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             errorMessage.textContent = 'Requesting camera access...';
             
+            if (window.debugLog) {
+                debugLog('Camera initialization started', 'info');
+            }
+            
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error('Your browser does not support camera access');
+                const msg = 'Your browser does not support camera access';
+                if (window.debugLog) debugLog(msg, 'error');
+                throw new Error(msg);
             }
             
             const constraints = {
@@ -69,17 +75,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 audio: false
             };
 
+            if (window.debugLog) {
+                debugLog(`Requesting camera with constraints: ${JSON.stringify(constraints)}`, 'info');
+            }
+
             // Stop any existing stream
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
             }
 
             // Get access to the webcam
-            stream = await navigator.mediaDevices.getUserMedia(constraints);
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                if (window.debugLog) debugLog('Camera access granted!', 'info');
+            } catch (e) {
+                if (window.debugLog) {
+                    debugLog(`getUserMedia error: ${e.name} - ${e.message}`, 'error');
+                    debugLog(`Error code: ${e.code || 'N/A'}`, 'error');
+                }
+                throw e;
+            }
             
             // Enumerate available devices
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            mediaDevices = devices.filter(device => device.kind === 'videoinput');
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                mediaDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                if (window.debugLog) {
+                    debugLog(`Found ${mediaDevices.length} video input devices:`, 'info');
+                    mediaDevices.forEach((device, i) => {
+                        debugLog(`Device ${i+1}: ${device.label || 'unnamed device'} (${device.deviceId.substring(0, 8)}...)`, 'info');
+                    });
+                }
+            } catch (e) {
+                if (window.debugLog) debugLog(`Error enumerating devices: ${e.message}`, 'error');
+            }
 
             // Show switch camera button if multiple cameras are available
             if (mediaDevices.length > 1) {
@@ -90,7 +120,13 @@ document.addEventListener('DOMContentLoaded', () => {
             video.srcObject = stream;
             
             // Wait for video to be ready
-            await video.play();
+            try {
+                await video.play();
+                if (window.debugLog) debugLog('Video playback started', 'info');
+            } catch (e) {
+                if (window.debugLog) debugLog(`Error playing video: ${e.message}`, 'error');
+                throw e;
+            }
             
             // Set canvas dimensions to match video
             canvas.width = video.videoWidth;
@@ -101,22 +137,30 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Clear any previous error messages
             errorMessage.textContent = '';
+            
+            if (window.debugLog) debugLog('Camera initialization completed successfully', 'info');
         } catch (error) {
             console.error('Error accessing webcam:', error);
             let errorMsg = 'Error accessing webcam: ';
             
             if (error.name === 'NotAllowedError') {
                 errorMsg += 'Permission denied. Please allow camera access and reload the page.';
+                if (window.debugLog) debugLog('Camera permission denied by user or system', 'error');
             } else if (error.name === 'NotFoundError') {
                 errorMsg += 'No camera found. Please connect a camera and try again.';
+                if (window.debugLog) debugLog('No camera found on device', 'error');
             } else if (error.name === 'NotReadableError') {
                 errorMsg += 'Camera is in use by another application. Please close other camera apps and try again.';
+                if (window.debugLog) debugLog('Camera in use by another application', 'error');
             } else if (error.name === 'OverconstrainedError') {
                 errorMsg += 'The requested camera settings are not supported.';
+                if (window.debugLog) debugLog('Camera constraints not supported', 'error');
             } else if (error.name === 'SecurityError') {
                 errorMsg += 'Camera access is blocked by your browser security settings.';
+                if (window.debugLog) debugLog('Security error when accessing camera', 'error');
             } else {
                 errorMsg += error.message || 'Unknown error';
+                if (window.debugLog) debugLog(`Unknown camera error: ${error.message || 'No details'}`, 'error');
             }
             
             errorMessage.textContent = errorMsg;
@@ -478,8 +522,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize the webcam when the page loads
     // Delay the initialization to make sure the page is fully loaded
     setTimeout(() => {
+        if (window.debugLog) debugLog('Starting camera initialization...', 'info');
         initializeWebcam();
-    }, 500);
+    }, 1000);
     
     // Show welcome message
     console.log('%c Welcome to ChemSnap! 🧪 ', 'background: #3498db; color: white; padding: 8px; border-radius: 4px; font-size: 12px;');
