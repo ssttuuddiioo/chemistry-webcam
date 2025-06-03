@@ -43,18 +43,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedStyle = null;
     let transformedImageUrl = null;
     
+    // API configuration
+    const isNetlify = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    const API_ENDPOINT = isNetlify ? '/api/transform' : '/api/transform';
+    const useServerAPI = true; // Set to false for local simulation
+    
     // Set up canvas context
     const context = canvas.getContext('2d');
-    
-    // Initialize the API (in a real app, this would be handled server-side)
-    // Replace with your actual Replicate API token if you have one
-    // For demo/testing purposes, we'll use a placeholder and fall back to the simulation
-    const useRealAPI = false; // Set to true when you have a real API token
-    const API_TOKEN = 'your_replicate_api_token_here';
-    
-    if (window.ChemSnapAPI) {
-        window.ChemSnapAPI.init(API_TOKEN);
-    }
     
     // Initialize the webcam
     async function initializeWebcam() {
@@ -227,10 +222,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Start with 5% progress
         updateProgress(5);
         
-        // Use the real API if available, otherwise simulate
-        if (useRealAPI && window.ChemSnapAPI) {
-            // Call the real API
-            window.ChemSnapAPI.transformImage(capturedImageData, selectedStyle, updateProgress)
+        if (useServerAPI) {
+            // Call the server API
+            callServerAPI(capturedImageData, selectedStyle, updateProgress)
                 .then(result => {
                     // Complete progress
                     updateProgress(100);
@@ -262,6 +256,56 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Allow user to try again
                     showSection(styleSection);
                 });
+        }
+    }
+    
+    // Call the server API to transform the image
+    async function callServerAPI(imageData, style, updateProgress) {
+        try {
+            // Start progress indicator
+            updateProgress(10);
+            
+            // Call the API
+            const response = await fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    imageData: imageData,
+                    style: style
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || response.statusText);
+            }
+            
+            // Simulate progress while waiting for the result
+            let progress = 20;
+            const progressInterval = setInterval(() => {
+                progress += 5;
+                updateProgress(Math.min(progress, 95));
+                
+                if (progress >= 95) {
+                    clearInterval(progressInterval);
+                }
+            }, 1000);
+            
+            // Get the response data
+            const data = await response.json();
+            
+            // Clear the progress interval
+            clearInterval(progressInterval);
+            
+            // Return the result
+            return {
+                outputImageUrl: data.outputImageUrl
+            };
+        } catch (error) {
+            console.error('Error calling server API:', error);
+            throw error;
         }
     }
     

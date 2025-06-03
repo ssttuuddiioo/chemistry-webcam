@@ -1,25 +1,32 @@
-# CamSnap 📸
+# ChemSnap 📸
 
-A modern, lightweight web application for capturing photos directly from your browser using your device's camera.
+A modern web application for capturing photos and transforming them with AI using the Replicate API.
 
-![CamSnap Demo](https://via.placeholder.com/800x400?text=CamSnap+Demo)
+![ChemSnap Demo](https://via.placeholder.com/800x400?text=ChemSnap+Demo)
 
 ## ✨ Features
 
 - 📱 Responsive design works on desktop and mobile devices
 - 🔄 Switch between front and back cameras
 - 📷 Capture photos with a flash effect
-- 💾 Download captured images with one click
-- 🖼️ View photos in a gallery right after capture
+- 🧪 Transform photos with AI using Replicate API
+- 💾 Download transformed images with one click
+- 🖼️ View original and transformed photos side by side
 - ⌨️ Keyboard shortcuts (Space/Enter to capture, 'S' to switch camera)
 
 ## 🚀 Live Demo
 
 [Try it now on Netlify](https://chemistry-webcam.netlify.app)
 
-## 🛠️ Quick Start
+## 🛠️ Setup and Installation
 
-### Running Locally
+### Prerequisites
+
+- Node.js (version 12 or higher)
+- npm or yarn
+- Replicate API token
+
+### Installation
 
 1. Clone this repository:
    ```bash
@@ -27,44 +34,60 @@ A modern, lightweight web application for capturing photos directly from your br
    cd chemistry-webcam
    ```
 
-2. Start a local server:
+2. Install dependencies:
    ```bash
-   # Using Python 3
-   python3 -m http.server
-   
-   # Using Node.js
-   npx serve
+   npm install
    ```
 
-3. Open your browser and navigate to:
-   - http://localhost:8000 (Python)
-   - http://localhost:3000 (Node/serve)
+3. Create a `.env` file in the root directory with your Replicate API token:
+   ```
+   REPLICATE_API_TOKEN=your_replicate_api_token_here
+   PORT=3000
+   ```
+
+### Running the Application
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Or for production:
+
+```bash
+npm start
+```
+
+Then open your browser and navigate to:
+- http://localhost:3000
 
 ## 📦 Deployment
-
-### Deploy to GitHub Pages
-
-1. Push your code to a GitHub repository
-2. Go to your repository settings
-3. Navigate to "Pages" in the sidebar
-4. Under "Source", select "main" branch and "/ (root)" folder
-5. Click "Save" and your site will be published
 
 ### Deploy to Netlify
 
 1. Sign up for a [Netlify](https://www.netlify.com/) account
 2. Click "New site from Git"
 3. Connect to your GitHub repository
-4. Select the repository containing CamSnap
+4. Select the repository containing ChemSnap
 5. Use the following settings:
-   - Build command: (leave blank)
-   - Publish directory: `.` (dot)
+   - Build command: `npm install`
+   - Publish directory: `.`
+   - Environment variables: Add your `REPLICATE_API_TOKEN`
 6. Click "Deploy site"
+
+### Deploy to Heroku
+
+1. Create a new app on [Heroku](https://www.heroku.com/)
+2. Connect to your GitHub repository
+3. Set up automatic deploys from the main branch
+4. Add your `REPLICATE_API_TOKEN` in the Config Vars section of the Settings page
+5. Deploy the application
 
 ## 🔒 Security Notes
 
-- For security reasons, camera access requires HTTPS when deployed online
-- Some browsers may block camera access if the site isn't secure
+- The Replicate API token is stored securely on the server
+- Camera access requires HTTPS when deployed online
 - When testing locally, most browsers allow camera access via HTTP on localhost
 
 ## 📱 Browser Compatibility

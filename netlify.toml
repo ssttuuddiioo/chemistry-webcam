@@ -1,9 +1,14 @@
 [build]
   publish = "."
-  command = ""
+  command = "npm install"
 
 [dev]
-  framework = "#static"
+  command = "npm run dev"
+  port = 3000
+  framework = "#custom"
+
+[functions]
+  directory = "netlify/functions"
 
 # Set headers for better security
 [[headers]]
@@ -13,12 +18,18 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; script-src 'self'; font-src 'self' https://cdnjs.cloudflare.com;"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy = "default-src 'self'; connect-src 'self' https://api.replicate.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; script-src 'self' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com;"
+    Permissions-Policy = "camera=self, microphone=(), geolocation=()"
 
 # Redirect to HTTPS
 [[redirects]]
   from = "http://*"
   to = "https://:splat"
   status = 301
-  force = true 
+  force = true
+
+# API proxy for Replicate
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200 
