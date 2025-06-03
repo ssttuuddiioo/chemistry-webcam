@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // API configuration
     const isNetlify = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-    const API_ENDPOINT = isNetlify ? '/api/transform' : '/api/transform';
+    const API_ENDPOINT = isNetlify ? '/api/transform' : 'http://localhost:8002/api/transform';
     const useServerAPI = true; // Set to false for local simulation
     
     // Set up canvas context
