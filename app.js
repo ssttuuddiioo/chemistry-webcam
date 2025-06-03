@@ -372,10 +372,16 @@ document.addEventListener('DOMContentLoaded', () => {
             // Clear the progress interval
             clearInterval(progressInterval);
             
+            console.log('Server response:', data);
+            
             // Return the result
-            return {
-                outputImageUrl: data.outputImageUrl
-            };
+            if (data.success && data.outputImageUrl) {
+                return {
+                    outputImageUrl: data.outputImageUrl
+                };
+            } else {
+                throw new Error(data.error || 'No image URL returned from server');
+            }
         } catch (error) {
             console.error('Error calling server API:', error);
             throw error;
@@ -418,18 +424,28 @@ document.addEventListener('DOMContentLoaded', () => {
     function showResult(transformedUrl) {
         // Set images
         originalImage.src = capturedImageData;
-        resultImage.src = transformedUrl;
         
-        // Generate QR code for download
-        if (window.QRCode) {
-            // Clear any existing QR code
-            qrCodeContainer.innerHTML = '';
+        // Handle different URL formats for the transformed image
+        if (transformedUrl) {
+            console.log('Transformed URL:', transformedUrl);
             
-            new QRCode(qrCodeContainer, {
-                text: transformedUrl,
-                width: 128,
-                height: 128
-            });
+            // Set the result image source
+            resultImage.src = transformedUrl;
+            
+            // Generate QR code for download
+            if (window.QRCode) {
+                // Clear any existing QR code
+                qrCodeContainer.innerHTML = '';
+                
+                new QRCode(qrCodeContainer, {
+                    text: transformedUrl,
+                    width: 128,
+                    height: 128
+                });
+            }
+        } else {
+            console.error('No transformed URL received');
+            resultImage.src = capturedImageData; // Fall back to original image
         }
         
         // Show result section

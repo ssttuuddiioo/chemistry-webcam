@@ -88,13 +88,12 @@ async function createPrediction(imageData, prompt) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      // Use the black-forest-labs/flux-kontext-pro model
-      version: "5e5296dd0ff98f79ce32188f01308af6e1e0157cac6cf306852b7b1b9ad0e23a",
+      // Use the latest black-forest-labs/flux-kontext-pro model
+      version: "64734fe9bb527757ee720f64e35cf8266a8f48449f6ee7722fb2dec26a7a0476",
       input: {
         prompt: prompt,
         input_image: imageUrl,
-        output_format: "jpg",
-        safety_tolerance: 2
+        aspect_ratio: "match_input_image",
       }
     })
   });
@@ -127,10 +126,21 @@ async function waitForResult(id) {
     }
     
     const prediction = await response.json();
+    console.log('Prediction status:', prediction.status);
     
     if (prediction.status === "succeeded") {
       console.log('Prediction succeeded!');
-      return prediction.output;
+      console.log('Output:', prediction.output);
+      
+      // Handle the output from black-forest-labs/flux-kontext-pro model
+      // The model can return either a single URL string or an array
+      if (Array.isArray(prediction.output)) {
+        return prediction.output[0]; // Return the first URL in the array
+      } else if (typeof prediction.output === 'string') {
+        return prediction.output; // Return the URL string directly
+      } else {
+        throw new Error("Unexpected output format from Replicate API");
+      }
     }
     
     if (prediction.status === "failed") {
