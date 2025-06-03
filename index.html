@@ -3,43 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CamSnap - Easy Photo Capture</title>
+    <title>ChemSnap - AI Photo Transformation</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <meta name="description" content="A simple, elegant web app for capturing and downloading photos from your device's camera">
+    <meta name="description" content="Capture photos and transform them with AI using various artistic styles">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-camera"></i> CamSnap</h1>
-            <p class="tagline">Instant photo capture from your browser</p>
+            <h1><i class="fas fa-flask"></i> ChemSnap</h1>
+            <p class="tagline">Transform your photos with AI chemistry</p>
         </header>
         
-        <div class="webcam-container">
-            <video id="webcam" autoplay playsinline></video>
-            <canvas id="canvas" style="display: none;"></canvas>
-            <div class="camera-overlay" id="camera-overlay">
-                <div class="frame-corners"></div>
+        <!-- Main app sections -->
+        <div class="app-container">
+            <!-- Step 1: Capture Section -->
+            <div class="app-section" id="capture-section">
+                <div class="webcam-container">
+                    <video id="webcam" autoplay playsinline></video>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    <div id="countdown-overlay" class="countdown-overlay">
+                        <span id="countdown">3</span>
+                    </div>
+                    <div class="camera-overlay" id="camera-overlay">
+                        <div class="frame-corners"></div>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button id="start-capture" class="btn-primary"><i class="fas fa-camera"></i> Start Capture</button>
+                    <button id="switch" class="btn-secondary" style="display: none;"><i class="fas fa-sync-alt"></i> Switch Camera</button>
+                </div>
+                
+                <div id="error-message" class="error"></div>
+            </div>
+            
+            <!-- Step 2: Review Section -->
+            <div class="app-section hidden" id="review-section">
+                <h2><i class="fas fa-check-circle"></i> Review Your Photo</h2>
+                <div class="review-container">
+                    <img id="review-image" src="" alt="Captured photo">
+                </div>
+                <div class="controls">
+                    <button id="approve-photo" class="btn-primary"><i class="fas fa-thumbs-up"></i> Use This Photo</button>
+                    <button id="retake-photo" class="btn-secondary"><i class="fas fa-redo"></i> Take Another</button>
+                </div>
+            </div>
+            
+            <!-- Step 3: Style Selection -->
+            <div class="app-section hidden" id="style-section">
+                <h2><i class="fas fa-magic"></i> Choose a Style</h2>
+                <div class="styles-container">
+                    <div class="style-card" data-style="neon_cyberpunk">
+                        <div class="style-preview neon-cyberpunk"></div>
+                        <h3>Neon Cyberpunk</h3>
+                        <p>Futuristic, glowing, cyberpunk aesthetic</p>
+                    </div>
+                    <div class="style-card" data-style="watercolor_painting">
+                        <div class="style-preview watercolor"></div>
+                        <h3>Watercolor Painting</h3>
+                        <p>Soft, flowing, artistic watercolor style</p>
+                    </div>
+                    <div class="style-card" data-style="retro_synthwave">
+                        <div class="style-preview synthwave"></div>
+                        <h3>Retro Synthwave</h3>
+                        <p>80s inspired retro aesthetic with neon grids</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 4: Processing -->
+            <div class="app-section hidden" id="processing-section">
+                <h2><i class="fas fa-cog fa-spin"></i> Transforming Your Image</h2>
+                <div class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <p>Please wait while we apply AI magic to your photo...</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 5: Result -->
+            <div class="app-section hidden" id="result-section">
+                <h2><i class="fas fa-star"></i> Your Transformed Image</h2>
+                <div class="result-container">
+                    <div class="comparison">
+                        <div class="original">
+                            <h4>Original</h4>
+                            <img id="original-image" src="" alt="Original photo">
+                        </div>
+                        <div class="transformed">
+                            <h4>Transformed</h4>
+                            <img id="result-image" src="" alt="AI transformed photo">
+                        </div>
+                    </div>
+                    <div class="share-container">
+                        <h3>Get Your Image</h3>
+                        <div class="download-options">
+                            <div class="email-option">
+                                <input type="email" id="email-input" placeholder="Enter your email">
+                                <button id="send-email" class="btn-primary"><i class="fas fa-envelope"></i> Send to Email</button>
+                            </div>
+                            <div class="qr-option">
+                                <div id="qr-code"></div>
+                                <p>Scan to download</p>
+                            </div>
+                        </div>
+                        <button id="download-image" class="btn-secondary"><i class="fas fa-download"></i> Download Now</button>
+                        <button id="start-over" class="btn-tertiary"><i class="fas fa-redo"></i> Create Another</button>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <div class="controls">
-            <button id="capture" class="btn-primary"><i class="fas fa-camera"></i> Capture</button>
-            <button id="switch" class="btn-secondary" style="display: none;"><i class="fas fa-sync-alt"></i> Switch Camera</button>
-        </div>
-        
-        <div id="error-message" class="error"></div>
-        
-        <div class="gallery">
-            <h2><i class="fas fa-images"></i> Your Photos</h2>
-            <p class="gallery-info">Click on any photo to download it</p>
-            <div id="photos"></div>
-        </div>
-        
         <footer>
-            <p>© 2023 CamSnap - <a href="https://github.com/ssttuuddiioo/chemistry-webcam" target="_blank">View on GitHub</a></p>
+            <p>© 2023 ChemSnap - <a href="https://github.com/ssttuuddiioo/chemistry-webcam" target="_blank">View on GitHub</a></p>
         </footer>
     </div>
+    
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="api.js"></script>
     <script src="app.js"></script>
 </body>
 </html> 
