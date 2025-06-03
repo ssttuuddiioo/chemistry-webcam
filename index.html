@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CamSnap - Easy Photo Capture</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta name="description" content="A simple, elegant web app for capturing and downloading photos from your device's camera">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-camera"></i> CamSnap</h1>
+            <p class="tagline">Instant photo capture from your browser</p>
+        </header>
+        
+        <div class="webcam-container">
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="canvas" style="display: none;"></canvas>
+            <div class="camera-overlay" id="camera-overlay">
+                <div class="frame-corners"></div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="capture" class="btn-primary"><i class="fas fa-camera"></i> Capture</button>
+            <button id="switch" class="btn-secondary" style="display: none;"><i class="fas fa-sync-alt"></i> Switch Camera</button>
+        </div>
+        
+        <div id="error-message" class="error"></div>
+        
+        <div class="gallery">
+            <h2><i class="fas fa-images"></i> Your Photos</h2>
+            <p class="gallery-info">Click on any photo to download it</p>
+            <div id="photos"></div>
+        </div>
+        
+        <footer>
+            <p>© 2023 CamSnap - <a href="https://github.com/yourusername/camsnap" target="_blank">View on GitHub</a></p>
+        </footer>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html> 

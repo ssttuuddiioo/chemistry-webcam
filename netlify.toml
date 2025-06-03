@@ -1,0 +1,24 @@
+[build]
+  publish = "."
+  command = ""
+
+[dev]
+  framework = "#static"
+
+# Set headers for better security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; script-src 'self'; font-src 'self' https://cdnjs.cloudflare.com;"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Redirect to HTTPS
+[[redirects]]
+  from = "http://*"
+  to = "https://:splat"
+  status = 301
+  force = true 
