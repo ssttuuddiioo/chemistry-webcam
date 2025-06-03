@@ -15,7 +15,7 @@ A modern, lightweight web application for capturing photos directly from your br
 
 ## 🚀 Live Demo
 
-[Try it now on Netlify](https://your-camsnap-demo.netlify.app)
+[Try it now on Netlify](https://chemistry-webcam.netlify.app)
 
 ## 🛠️ Quick Start
 
@@ -23,8 +23,8 @@ A modern, lightweight web application for capturing photos directly from your br
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/camsnap.git
-   cd camsnap
+   git clone https://github.com/ssttuuddiioo/chemistry-webcam.git
+   cd chemistry-webcam
    ```
 
 2. Start a local server:
@@ -81,8 +81,8 @@ MIT License
 
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/yourusername/camsnap/issues).
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/ssttuuddiioo/chemistry-webcam/issues).
 
 ---
 
-Made with ❤️ by [Your Name] 
+Made with ❤️ by Studio 
