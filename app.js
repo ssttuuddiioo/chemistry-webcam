@@ -56,6 +56,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             errorMessage.textContent = 'Requesting camera access...';
             
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error('Your browser does not support camera access');
+            }
+            
             const constraints = {
                 video: {
                     facingMode: facingMode,
@@ -99,8 +103,33 @@ document.addEventListener('DOMContentLoaded', () => {
             errorMessage.textContent = '';
         } catch (error) {
             console.error('Error accessing webcam:', error);
-            errorMessage.textContent = `Error accessing webcam: ${error.message || 'Permission denied'}`;
+            let errorMsg = 'Error accessing webcam: ';
+            
+            if (error.name === 'NotAllowedError') {
+                errorMsg += 'Permission denied. Please allow camera access and reload the page.';
+            } else if (error.name === 'NotFoundError') {
+                errorMsg += 'No camera found. Please connect a camera and try again.';
+            } else if (error.name === 'NotReadableError') {
+                errorMsg += 'Camera is in use by another application. Please close other camera apps and try again.';
+            } else if (error.name === 'OverconstrainedError') {
+                errorMsg += 'The requested camera settings are not supported.';
+            } else if (error.name === 'SecurityError') {
+                errorMsg += 'Camera access is blocked by your browser security settings.';
+            } else {
+                errorMsg += error.message || 'Unknown error';
+            }
+            
+            errorMessage.textContent = errorMsg;
             startCaptureBtn.disabled = true;
+            
+            // Add a reload button to try again
+            const reloadBtn = document.createElement('button');
+            reloadBtn.innerText = 'Try Again';
+            reloadBtn.className = 'btn-primary';
+            reloadBtn.style.marginTop = '10px';
+            reloadBtn.onclick = () => window.location.reload();
+            errorMessage.appendChild(document.createElement('br'));
+            errorMessage.appendChild(reloadBtn);
         }
     }
 
@@ -447,7 +476,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Initialize the webcam when the page loads
-    initializeWebcam();
+    // Delay the initialization to make sure the page is fully loaded
+    setTimeout(() => {
+        initializeWebcam();
+    }, 500);
     
     // Show welcome message
     console.log('%c Welcome to ChemSnap! 🧪 ', 'background: #3498db; color: white; padding: 8px; border-radius: 4px; font-size: 12px;');
