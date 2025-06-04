@@ -76,89 +76,92 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(msg);
             }
             
-            // Start with default constraints
-            let constraints = {
-                video: {
-                    facingMode: facingMode,
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                },
-                audio: false
-            };
-
-            // Browser-specific adjustments
-            if (isSafari) {
-                // For Safari, simplify constraints which can cause issues
-                constraints.video = { facingMode: facingMode };
-            } else if (isChrome) {
-                // For Chrome, be more specific about video constraints
-                constraints.video = {
-                    facingMode: facingMode,
-                    width: { min: 640, ideal: 1280, max: 1920 },
-                    height: { min: 480, ideal: 720, max: 1080 },
-                    frameRate: { ideal: 30 }
-                };
-            }
-
-            if (window.debugLog) {
-                debugLog(`Requesting camera with constraints: ${JSON.stringify(constraints)}`, 'info');
-            }
-
-            // Stop any existing stream
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
-
-            // Get access to the webcam
-            try {
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
-                if (window.debugLog) debugLog('Camera access granted!', 'info');
-            } catch (e) {
-                if (window.debugLog) {
-                    debugLog(`getUserMedia error: ${e.name} - ${e.message}`, 'error');
-                    debugLog(`Error code: ${e.code || 'N/A'}`, 'error');
-                }
-                
-                // For Safari: If the first attempt failed, try again with even simpler constraints
-                if (isSafari && e.name === 'NotReadableError') {
-                    console.log("Retrying with simplified constraints for Safari");
-                    try {
-                        stream = await navigator.mediaDevices.getUserMedia({ 
-                            video: true, 
-                            audio: false 
-                        });
-                        if (window.debugLog) debugLog('Camera access granted on second attempt!', 'info');
-                    } catch (e2) {
-                        if (window.debugLog) {
-                            debugLog(`Second attempt failed: ${e2.name} - ${e2.message}`, 'error');
-                        }
-                        throw e2;
+            // Check if permissions are granted explicitly for Chrome
+            if (isChrome && navigator.permissions && navigator.permissions.query) {
+                try {
+                    const permissionStatus = await navigator.permissions.query({ name: 'camera' });
+                    if (window.debugLog) debugLog(`Camera permission status: ${permissionStatus.state}`, 'info');
+                    
+                    if (permissionStatus.state === 'denied') {
+                        const msg = 'Camera access is blocked. Please allow camera access in your browser settings.';
+                        if (window.debugLog) debugLog(msg, 'error');
+                        showCameraInstructions();
+                        throw new Error(msg);
                     }
-                } else {
-                    throw e;
+                } catch (permError) {
+                    if (window.debugLog) debugLog(`Error checking permissions: ${permError.message}`, 'warn');
+                    // Continue anyway, getUserMedia will also check permissions
                 }
             }
             
-            // Enumerate available devices
+            // Try multiple approaches for camera access
+            let stream = null;
+            let lastError = null;
+            
+            // Approach 1: Simplified constraints
             try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                mediaDevices = devices.filter(device => device.kind === 'videoinput');
-                
-                if (window.debugLog) {
-                    debugLog(`Found ${mediaDevices.length} video input devices:`, 'info');
-                    mediaDevices.forEach((device, i) => {
-                        debugLog(`Device ${i+1}: ${device.label || 'unnamed device'} (${device.deviceId.substring(0, 8)}...)`, 'info');
-                    });
-                }
+                if (window.debugLog) debugLog('Trying simplified constraints first', 'info');
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: true, 
+                    audio: false 
+                });
+                if (window.debugLog) debugLog('Camera access granted with simplified constraints!', 'info');
             } catch (e) {
-                if (window.debugLog) debugLog(`Error enumerating devices: ${e.message}`, 'error');
+                lastError = e;
+                if (window.debugLog) debugLog(`Simplified constraints failed: ${e.name} - ${e.message}`, 'warn');
             }
-
-            // Show switch camera button if multiple cameras are available
-            if (mediaDevices.length > 1) {
-                switchBtn.style.display = 'flex';
+            
+            // Approach 2: Detailed constraints if first approach failed
+            if (!stream) {
+                try {
+                    // Browser-specific constraints
+                    let constraints = {
+                        video: {
+                            facingMode: facingMode,
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        },
+                        audio: false
+                    };
+                    
+                    if (isSafari) {
+                        constraints.video = { facingMode: facingMode };
+                    } else if (isChrome) {
+                        constraints.video = {
+                            facingMode: facingMode,
+                            width: { min: 640, ideal: 1280, max: 1920 },
+                            height: { min: 480, ideal: 720, max: 1080 },
+                            frameRate: { ideal: 30 }
+                        };
+                    }
+                    
+                    if (window.debugLog) {
+                        debugLog(`Trying detailed constraints: ${JSON.stringify(constraints)}`, 'info');
+                    }
+                    
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    if (window.debugLog) debugLog('Camera access granted with detailed constraints!', 'info');
+                } catch (e) {
+                    lastError = e;
+                    if (window.debugLog) {
+                        debugLog(`Detailed constraints failed: ${e.name} - ${e.message}`, 'error');
+                    }
+                }
             }
-
+            
+            // If all attempts failed, throw the last error
+            if (!stream) {
+                throw lastError || new Error('Failed to access camera after multiple attempts');
+            }
+            
+            // Stop any existing stream before setting the new one
+            if (window.existingStream) {
+                window.existingStream.getTracks().forEach(track => track.stop());
+            }
+            
+            // Store the stream globally
+            window.existingStream = stream;
+            
             // Connect the stream to the video element
             video.srcObject = stream;
             
@@ -189,6 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error.name === 'NotAllowedError') {
                 errorMsg += 'Permission denied. Please allow camera access and reload the page.';
                 if (window.debugLog) debugLog('Camera permission denied by user or system', 'error');
+                showCameraInstructions();
             } else if (error.name === 'NotFoundError') {
                 errorMsg += 'No camera found. Please connect a camera and try again.';
                 if (window.debugLog) debugLog('No camera found on device', 'error');
@@ -201,6 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (error.name === 'SecurityError') {
                 errorMsg += 'Camera access is blocked by your browser security settings.';
                 if (window.debugLog) debugLog('Security error when accessing camera', 'error');
+                showCameraInstructions();
             } else {
                 errorMsg += error.message || 'Unknown error';
                 if (window.debugLog) debugLog(`Unknown camera error: ${error.message || 'No details'}`, 'error');
@@ -218,6 +223,26 @@ document.addEventListener('DOMContentLoaded', () => {
             errorMessage.appendChild(document.createElement('br'));
             errorMessage.appendChild(reloadBtn);
         }
+    }
+    
+    // Show camera permission instructions for Chrome
+    function showCameraInstructions() {
+        const instructionsDiv = document.createElement('div');
+        instructionsDiv.className = 'camera-instructions';
+        instructionsDiv.innerHTML = `
+            <h3>How to enable camera access:</h3>
+            <ol>
+                <li>Click the camera/lock icon in your browser's address bar</li>
+                <li>Select "Always allow" for camera access</li>
+                <li>Reload the page</li>
+            </ol>
+            <div class="camera-instructions-image">
+                <img src="camera_permissions.png" alt="Camera permissions example" onerror="this.style.display='none'">
+            </div>
+        `;
+        
+        errorMessage.appendChild(document.createElement('br'));
+        errorMessage.appendChild(instructionsDiv);
     }
 
     // Start the capture process with countdown

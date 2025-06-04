@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChemSnap - AI Photo Transformation</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.replicate.com *; img-src 'self' data: blob: https://replicate.delivery https://*.replicate.delivery *; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com;">
-    <meta http-equiv="Permissions-Policy" content="camera=(self)">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.replicate.com *; img-src 'self' data: blob: https://replicate.delivery https://*.replicate.delivery *; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js; font-src 'self' https://cdnjs.cloudflare.com;">
+    <meta http-equiv="Permissions-Policy" content="camera=self">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <meta name="description" content="Capture photos and transform them with AI using various artistic styles">
@@ -125,7 +125,28 @@
     </div>
     
     <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        // Load QR Code library with fallback
+        function loadScript(url, callback) {
+            var script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = url;
+            script.onload = callback;
+            script.onerror = function() {
+                console.warn('Failed to load script from:', url);
+                if (url.includes('cdnjs')) {
+                    console.log('Trying local fallback...');
+                    loadScript('qrcode.min.js', callback); // Local fallback
+                }
+            };
+            document.head.appendChild(script);
+        }
+        
+        // Load QR code library
+        loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js', function() {
+            console.log('QR Code library loaded successfully');
+        });
+    </script>
     <script src="debug.js"></script>
     <script src="app.js"></script>
 </body>
