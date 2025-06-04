@@ -81,6 +81,19 @@ async function createPrediction(imageData, prompt) {
   // Ensure imageData is in the right format (data:image/jpeg;base64,...)
   const imageUrl = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
   
+  console.log(`Creating prediction with prompt: "${prompt}"`);
+  
+  const modelVersion = "64734fe9bb527757ee720f64e35cf8266a8f48449f6ee7722fb2dec26a7a0476"; // flux-kontext-pro model
+  
+  const modelInput = {
+    prompt: `High quality ${prompt}. Make it dramatic and eye-catching.`,
+    input_image: imageUrl,
+    aspect_ratio: "match_input_image",
+    seed: Math.floor(Math.random() * 1000000) // Add randomness for more diverse results
+  };
+  
+  console.log("Sending request to Replicate API...");
+  
   const response = await fetch('https://api.replicate.com/v1/predictions', {
     method: 'POST',
     headers: {
@@ -88,70 +101,94 @@ async function createPrediction(imageData, prompt) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      // Use the latest black-forest-labs/flux-kontext-pro model
-      version: "64734fe9bb527757ee720f64e35cf8266a8f48449f6ee7722fb2dec26a7a0476",
-      input: {
-        prompt: prompt,
-        input_image: imageUrl,
-        aspect_ratio: "match_input_image",
-      }
+      version: modelVersion,
+      input: modelInput
     })
   });
   
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`API error: ${error.detail || response.statusText}`);
+    const errorData = await response.json();
+    console.error("API Error Response:", errorData);
+    throw new Error(`API error: ${errorData.detail || response.statusText}`);
   }
   
-  return await response.json();
+  const data = await response.json();
+  console.log("Prediction created with ID:", data.id);
+  return data;
 }
 
 // Function to poll for results
 async function waitForResult(id) {
-  const maxAttempts = 60;  // Maximum polling attempts
+  const maxAttempts = 120;  // Increase maximum polling attempts for longer processing
   const interval = 1000;   // Polling interval in ms
   
+  console.log(`Starting to poll for results with ID: ${id}`);
+  
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    console.log(`Checking prediction status (attempt ${attempt + 1}/${maxAttempts})...`);
-    
-    const response = await fetch(`https://api.replicate.com/v1/predictions/${id}`, {
-      headers: {
-        'Authorization': `Token ${REPLICATE_API_TOKEN}`
-      }
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`API error: ${error.detail || response.statusText}`);
+    if (attempt % 5 === 0) { // Log less frequently to reduce noise
+      console.log(`Checking prediction status (attempt ${attempt + 1}/${maxAttempts})...`);
     }
     
-    const prediction = await response.json();
-    console.log('Prediction status:', prediction.status);
-    
-    if (prediction.status === "succeeded") {
-      console.log('Prediction succeeded!');
-      console.log('Output:', prediction.output);
+    try {
+      const response = await fetch(`https://api.replicate.com/v1/predictions/${id}`, {
+        headers: {
+          'Authorization': `Token ${REPLICATE_API_TOKEN}`
+        }
+      });
       
-      // Handle the output from black-forest-labs/flux-kontext-pro model
-      // The model can return either a single URL string or an array
-      if (Array.isArray(prediction.output)) {
-        return prediction.output[0]; // Return the first URL in the array
-      } else if (typeof prediction.output === 'string') {
-        return prediction.output; // Return the URL string directly
-      } else {
-        throw new Error("Unexpected output format from Replicate API");
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("Error checking prediction status:", error);
+        throw new Error(`API error: ${error.detail || response.statusText}`);
       }
-    }
-    
-    if (prediction.status === "failed") {
-      throw new Error(prediction.error || "Prediction failed");
+      
+      const prediction = await response.json();
+      
+      if (attempt % 5 === 0) { // Log less frequently
+        console.log('Prediction status:', prediction.status);
+      }
+      
+      if (prediction.status === "succeeded") {
+        console.log('Prediction succeeded!');
+        console.log('Output:', prediction.output);
+        
+        // Handle the output from the model
+        if (Array.isArray(prediction.output)) {
+          console.log("Returning array item (first URL)");
+          return prediction.output[0]; // Return the first URL in the array
+        } else if (typeof prediction.output === 'string') {
+          console.log("Returning direct URL string");
+          return prediction.output; // Return the URL string directly
+        } else {
+          console.error("Unexpected output format:", typeof prediction.output);
+          console.error("Output value:", prediction.output);
+          throw new Error("Unexpected output format from Replicate API");
+        }
+      }
+      
+      if (prediction.status === "failed") {
+        console.error("Prediction failed:", prediction.error);
+        throw new Error(prediction.error || "Prediction failed");
+      }
+      
+      // If still processing, continue polling
+      if (prediction.status === "processing") {
+        // Just continue to the next attempt
+      } else if (prediction.status === "starting") {
+        // Just starting, continue polling
+      } else {
+        console.log("Unknown status:", prediction.status);
+      }
+    } catch (error) {
+      console.error(`Error on polling attempt ${attempt + 1}:`, error);
+      // Continue polling despite error
     }
     
     // Wait before polling again
     await new Promise(resolve => setTimeout(resolve, interval));
   }
   
-  throw new Error("Prediction timed out");
+  throw new Error("Prediction timed out after maximum attempts");
 }
 
 // Serve the main HTML page

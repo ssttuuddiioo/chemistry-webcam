@@ -60,13 +60,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 debugLog('Camera initialization started', 'info');
             }
             
+            // Detect browser types
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            const isChrome = /chrome/i.test(navigator.userAgent) && !/edge|edg/i.test(navigator.userAgent);
+            
+            if (isSafari) {
+                console.log("Safari browser detected - using Safari-specific camera settings");
+            } else if (isChrome) {
+                console.log("Chrome browser detected - using Chrome-specific camera settings");
+            }
+            
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 const msg = 'Your browser does not support camera access';
                 if (window.debugLog) debugLog(msg, 'error');
                 throw new Error(msg);
             }
             
-            const constraints = {
+            // Start with default constraints
+            let constraints = {
                 video: {
                     facingMode: facingMode,
                     width: { ideal: 1280 },
@@ -74,6 +85,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 audio: false
             };
+
+            // Browser-specific adjustments
+            if (isSafari) {
+                // For Safari, simplify constraints which can cause issues
+                constraints.video = { facingMode: facingMode };
+            } else if (isChrome) {
+                // For Chrome, be more specific about video constraints
+                constraints.video = {
+                    facingMode: facingMode,
+                    width: { min: 640, ideal: 1280, max: 1920 },
+                    height: { min: 480, ideal: 720, max: 1080 },
+                    frameRate: { ideal: 30 }
+                };
+            }
 
             if (window.debugLog) {
                 debugLog(`Requesting camera with constraints: ${JSON.stringify(constraints)}`, 'info');
@@ -93,7 +118,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     debugLog(`getUserMedia error: ${e.name} - ${e.message}`, 'error');
                     debugLog(`Error code: ${e.code || 'N/A'}`, 'error');
                 }
-                throw e;
+                
+                // For Safari: If the first attempt failed, try again with even simpler constraints
+                if (isSafari && e.name === 'NotReadableError') {
+                    console.log("Retrying with simplified constraints for Safari");
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ 
+                            video: true, 
+                            audio: false 
+                        });
+                        if (window.debugLog) debugLog('Camera access granted on second attempt!', 'info');
+                    } catch (e2) {
+                        if (window.debugLog) {
+                            debugLog(`Second attempt failed: ${e2.name} - ${e2.message}`, 'error');
+                        }
+                        throw e2;
+                    }
+                } else {
+                    throw e;
+                }
             }
             
             // Enumerate available devices
@@ -287,20 +330,31 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show processing section
         showSection(processingSection);
         
+        // Message element to show status
+        const statusMessage = document.createElement('p');
+        statusMessage.className = 'status-message';
+        statusMessage.style.textAlign = 'center';
+        statusMessage.style.marginTop = '10px';
+        statusMessage.textContent = 'Starting transformation...';
+        processingSection.appendChild(statusMessage);
+        
         // Update progress function
-        const updateProgress = (percent) => {
+        const updateProgress = (percent, message) => {
             progressFill.style.width = `${percent}%`;
+            if (message) {
+                statusMessage.textContent = message;
+            }
         };
         
         // Start with 5% progress
-        updateProgress(5);
+        updateProgress(5, 'Preparing image...');
         
         if (useServerAPI) {
             // Call the server API
             callServerAPI(capturedImageData, selectedStyle, updateProgress)
                 .then(result => {
                     // Complete progress
-                    updateProgress(100);
+                    updateProgress(100, 'Transformation complete!');
                     
                     // Store the result and show it
                     transformedImageUrl = result.outputImageUrl;
@@ -309,6 +363,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 .catch(error => {
                     console.error('Error processing image:', error);
                     errorMessage.textContent = `Error processing image: ${error.message || 'Unknown error'}`;
+                    // Remove the status message element
+                    if (statusMessage.parentNode) {
+                        statusMessage.parentNode.removeChild(statusMessage);
+                    }
                     // Allow user to try again
                     showSection(styleSection);
                 });
@@ -317,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
             simulateApiCall(capturedImageData, selectedStyle, updateProgress)
                 .then(result => {
                     // Complete progress
-                    updateProgress(100);
+                    updateProgress(100, 'Transformation complete!');
                     
                     // Store the result and show it
                     transformedImageUrl = result.outputImageUrl;
@@ -326,6 +384,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 .catch(error => {
                     console.error('Error processing image:', error);
                     errorMessage.textContent = `Error processing image: ${error.message || 'Unknown error'}`;
+                    // Remove the status message element
+                    if (statusMessage.parentNode) {
+                        statusMessage.parentNode.removeChild(statusMessage);
+                    }
                     // Allow user to try again
                     showSection(styleSection);
                 });
@@ -336,7 +398,9 @@ document.addEventListener('DOMContentLoaded', () => {
     async function callServerAPI(imageData, style, updateProgress) {
         try {
             // Start progress indicator
-            updateProgress(10);
+            updateProgress(10, 'Connecting to server...');
+            
+            console.log("Calling server API with style:", style);
             
             // Call the API
             const response = await fetch(API_ENDPOINT, {
@@ -352,14 +416,33 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (!response.ok) {
                 const errorData = await response.json();
+                console.error("API error response:", errorData);
                 throw new Error(errorData.message || response.statusText);
             }
             
+            updateProgress(25, 'Processing started...');
+            
             // Simulate progress while waiting for the result
-            let progress = 20;
+            let progress = 30;
+            const progressMessages = [
+                'Analyzing image...',
+                'Applying artistic style...',
+                'Adding fine details...',
+                'Enhancing colors...',
+                'Finalizing transformation...'
+            ];
+            let messageIndex = 0;
+            
             const progressInterval = setInterval(() => {
-                progress += 5;
-                updateProgress(Math.min(progress, 95));
+                progress += 2; // Slower progress to match reality
+                
+                // Update message occasionally
+                if (progress % 15 === 0 && messageIndex < progressMessages.length) {
+                    updateProgress(progress, progressMessages[messageIndex]);
+                    messageIndex++;
+                } else {
+                    updateProgress(progress);
+                }
                 
                 if (progress >= 95) {
                     clearInterval(progressInterval);
@@ -376,10 +459,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Return the result
             if (data.success && data.outputImageUrl) {
+                console.log("Successfully received transformed image URL:", data.outputImageUrl);
+                updateProgress(95, 'Loading transformed image...');
                 return {
                     outputImageUrl: data.outputImageUrl
                 };
             } else {
+                console.error("API returned success but no image URL:", data);
                 throw new Error(data.error || 'No image URL returned from server');
             }
         } catch (error) {
@@ -422,34 +508,54 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Show the result
     function showResult(transformedUrl) {
-        // Set images
+        console.log("showResult called with URL:", transformedUrl);
+        
+        // Set original image
         originalImage.src = capturedImageData;
         
         // Handle different URL formats for the transformed image
         if (transformedUrl) {
-            console.log('Transformed URL:', transformedUrl);
+            console.log('Transformed URL received:', transformedUrl);
             
-            // Set the result image source
-            resultImage.src = transformedUrl;
-            
-            // Generate QR code for download
-            if (window.QRCode) {
-                // Clear any existing QR code
-                qrCodeContainer.innerHTML = '';
+            // Preload the image to ensure it loads properly
+            const img = new Image();
+            img.onload = function() {
+                console.log("Transformed image loaded successfully");
+                // Set the result image source once loaded
+                resultImage.src = transformedUrl;
                 
-                new QRCode(qrCodeContainer, {
-                    text: transformedUrl,
-                    width: 128,
-                    height: 128
-                });
-            }
+                // Generate QR code for download
+                if (window.QRCode) {
+                    // Clear any existing QR code
+                    qrCodeContainer.innerHTML = '';
+                    
+                    new QRCode(qrCodeContainer, {
+                        text: transformedUrl,
+                        width: 128,
+                        height: 128
+                    });
+                }
+                
+                // Show result section
+                showSection(resultSection);
+            };
+            
+            img.onerror = function() {
+                console.error("Failed to load transformed image from URL:", transformedUrl);
+                // Fall back to original image
+                resultImage.src = capturedImageData;
+                
+                // Show result section anyway
+                showSection(resultSection);
+            };
+            
+            // Start loading the image
+            img.src = transformedUrl;
         } else {
             console.error('No transformed URL received');
             resultImage.src = capturedImageData; // Fall back to original image
+            showSection(resultSection);
         }
-        
-        // Show result section
-        showSection(resultSection);
     }
     
     // Helper to show a specific section and hide others
