@@ -28,6 +28,9 @@ exports.handler = async function(event, context) {
       };
     }
     
+    console.log(`Received transform request with style: ${style}`);
+    console.log(`Image data length: ${imageData ? imageData.substring(0, 50) + "..." : "No image data"}`);
+    
     // Get the style prompt
     const stylePrompt = stylePrompts[style] || "Artistic transformation";
     
@@ -45,10 +48,13 @@ exports.handler = async function(event, context) {
     
     // First, create a prediction
     const prediction = await createPrediction(REPLICATE_API_TOKEN, imageData, stylePrompt);
+    console.log('Prediction created:', prediction.id);
     
     // Then poll for the result
     console.log('Polling for results...');
     const result = await waitForResult(REPLICATE_API_TOKEN, prediction.id);
+    
+    console.log('Transformation complete, sending URL back to client:', result);
     
     // Return the result
     return {
@@ -76,6 +82,7 @@ async function createPrediction(apiToken, imageData, prompt) {
   const imageUrl = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
   
   console.log(`Creating prediction with prompt: "${prompt}"`);
+  console.log(`Image data format valid: ${imageData.startsWith('data:')}`);
   
   const modelVersion = "64734fe9bb527757ee720f64e35cf8266a8f48449f6ee7722fb2dec26a7a0476"; // flux-kontext-pro model
   
@@ -87,6 +94,7 @@ async function createPrediction(apiToken, imageData, prompt) {
   };
   
   console.log("Sending request to Replicate API...");
+  console.log("Using model version:", modelVersion);
   
   const response = await fetch('https://api.replicate.com/v1/predictions', {
     method: 'POST',

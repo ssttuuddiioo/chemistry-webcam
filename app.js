@@ -349,6 +349,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Start with 5% progress
         updateProgress(5, 'Preparing image...');
         
+        if (window.debugLog) {
+            debugLog(`Processing image with style: ${selectedStyle}`, 'info');
+            debugLog(`Image data length: ${capturedImageData ? capturedImageData.length : 0}`, 'info');
+        }
+        
         if (useServerAPI) {
             // Call the server API
             callServerAPI(capturedImageData, selectedStyle, updateProgress)
@@ -358,10 +363,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     // Store the result and show it
                     transformedImageUrl = result.outputImageUrl;
+                    
+                    if (window.debugImageTransformation) {
+                        debugImageTransformation(capturedImageData, transformedImageUrl);
+                    }
+                    
                     showResult(transformedImageUrl);
                 })
                 .catch(error => {
                     console.error('Error processing image:', error);
+                    if (window.debugLog) {
+                        debugLog(`Error processing image: ${error.message || 'Unknown error'}`, 'error');
+                    }
                     errorMessage.textContent = `Error processing image: ${error.message || 'Unknown error'}`;
                     // Remove the status message element
                     if (statusMessage.parentNode) {
@@ -401,6 +414,8 @@ document.addEventListener('DOMContentLoaded', () => {
             updateProgress(10, 'Connecting to server...');
             
             console.log("Calling server API with style:", style);
+            console.log("Image data length:", imageData ? imageData.substring(0, 50) + "..." : "No image data");
+            console.log("API endpoint:", API_ENDPOINT);
             
             // Call the API
             const response = await fetch(API_ENDPOINT, {
@@ -460,6 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Return the result
             if (data.success && data.outputImageUrl) {
                 console.log("Successfully received transformed image URL:", data.outputImageUrl);
+                console.log("URL type:", typeof data.outputImageUrl);
                 updateProgress(95, 'Loading transformed image...');
                 return {
                     outputImageUrl: data.outputImageUrl
@@ -509,6 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Show the result
     function showResult(transformedUrl) {
         console.log("showResult called with URL:", transformedUrl);
+        console.log("URL type:", typeof transformedUrl);
         
         // Set original image
         originalImage.src = capturedImageData;
@@ -517,10 +534,33 @@ document.addEventListener('DOMContentLoaded', () => {
         if (transformedUrl) {
             console.log('Transformed URL received:', transformedUrl);
             
+            // Check if the URL is an HTTP(S) URL
+            const isHttpUrl = transformedUrl.startsWith('http://') || transformedUrl.startsWith('https://');
+            console.log("Is HTTP URL:", isHttpUrl);
+            
+            if (!isHttpUrl && transformedUrl.startsWith('data:')) {
+                console.log("URL is a data URL, setting directly");
+                resultImage.src = transformedUrl;
+                showSection(resultSection);
+                return;
+            }
+            
+            // For HTTP URLs, try to fetch the image first to check if it's accessible
+            if (isHttpUrl) {
+                console.log("Trying to fetch the image to check accessibility");
+                fetch(transformedUrl, { mode: 'no-cors' })
+                    .then(response => {
+                        console.log("Image fetch response:", response);
+                    })
+                    .catch(error => {
+                        console.error("Error fetching image:", error);
+                    });
+            }
+            
             // Preload the image to ensure it loads properly
             const img = new Image();
             img.onload = function() {
-                console.log("Transformed image loaded successfully");
+                console.log("Transformed image loaded successfully, dimensions:", img.width, "x", img.height);
                 // Set the result image source once loaded
                 resultImage.src = transformedUrl;
                 
@@ -540,16 +580,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 showSection(resultSection);
             };
             
-            img.onerror = function() {
+            img.onerror = function(error) {
                 console.error("Failed to load transformed image from URL:", transformedUrl);
-                // Fall back to original image
-                resultImage.src = capturedImageData;
+                console.error("Image error details:", error);
+                
+                // Try alternative approach for CORS issues
+                if (isHttpUrl) {
+                    console.log("Trying to create a proxy URL for CORS issues");
+                    const proxyUrl = isNetlify ? 
+                        `/api/proxy?url=${encodeURIComponent(transformedUrl)}` : 
+                        `http://localhost:8002/api/proxy?url=${encodeURIComponent(transformedUrl)}`;
+                    
+                    console.log("Using proxy URL:", proxyUrl);
+                    resultImage.src = proxyUrl;
+                } else {
+                    // Fall back to original image
+                    resultImage.src = capturedImageData;
+                }
                 
                 // Show result section anyway
                 showSection(resultSection);
             };
             
             // Start loading the image
+            console.log("Setting image src to:", transformedUrl);
+            img.crossOrigin = "anonymous";  // Try with CORS enabled
             img.src = transformedUrl;
         } else {
             console.error('No transformed URL received');

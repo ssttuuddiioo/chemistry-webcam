@@ -41,6 +41,9 @@ app.post('/api/transform', async (req, res) => {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
+    console.log(`Received transform request with style: ${style}`);
+    console.log(`Image data length: ${imageData ? imageData.substring(0, 50) + "..." : "No image data"}`);
+    
     // Check if API token is available
     if (!REPLICATE_API_TOKEN) {
       return res.status(500).json({ error: 'API token not configured' });
@@ -52,10 +55,13 @@ app.post('/api/transform', async (req, res) => {
     // First, create a prediction
     console.log('Creating prediction with Replicate API...');
     const prediction = await createPrediction(imageData, stylePrompt);
+    console.log('Prediction created:', prediction.id);
     
     // Then poll for the result
     console.log('Polling for results...');
     const result = await waitForResult(prediction.id);
+    
+    console.log('Transformation complete, sending URL back to client:', result);
     
     // Return the result to the client
     return res.json({ 
@@ -76,12 +82,54 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
+// Add a proxy endpoint for handling CORS issues
+app.get('/api/proxy', async (req, res) => {
+  try {
+    const imageUrl = req.query.url;
+    
+    if (!imageUrl) {
+      return res.status(400).json({ error: 'Missing URL parameter' });
+    }
+    
+    console.log(`Proxying image from URL: ${imageUrl}`);
+    
+    // Fetch the image
+    const response = await fetch(imageUrl);
+    
+    if (!response.ok) {
+      console.error(`Error fetching image: ${response.status} ${response.statusText}`);
+      return res.status(response.status).json({ 
+        error: 'Error fetching image', 
+        details: response.statusText 
+      });
+    }
+    
+    // Get content type and image data
+    const contentType = response.headers.get('content-type');
+    const imageBuffer = await response.buffer();
+    
+    console.log(`Image proxied successfully, content-type: ${contentType}, size: ${imageBuffer.length} bytes`);
+    
+    // Set headers and send the image
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.send(imageBuffer);
+  } catch (error) {
+    console.error('Error proxying image:', error);
+    res.status(500).json({ 
+      error: 'Error proxying image', 
+      message: error.message 
+    });
+  }
+});
+
 // Function to create a prediction with Replicate API
 async function createPrediction(imageData, prompt) {
   // Ensure imageData is in the right format (data:image/jpeg;base64,...)
   const imageUrl = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
   
   console.log(`Creating prediction with prompt: "${prompt}"`);
+  console.log(`Image data format valid: ${imageData.startsWith('data:')}`);
   
   const modelVersion = "64734fe9bb527757ee720f64e35cf8266a8f48449f6ee7722fb2dec26a7a0476"; // flux-kontext-pro model
   
@@ -93,6 +141,7 @@ async function createPrediction(imageData, prompt) {
   };
   
   console.log("Sending request to Replicate API...");
+  console.log("Using model version:", modelVersion);
   
   const response = await fetch('https://api.replicate.com/v1/predictions', {
     method: 'POST',
